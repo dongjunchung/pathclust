@@ -1,0 +1,34 @@
+Package: pathclust
+Version: 0.9-1
+Date: 2017-03-07
+Title: pathclust: Pathway-guided identification of cancer subgroups
+Author: Zequn Sun <sunze@musc.edu>, Wei Wei <wei.wei@yale.edu>,
+    Dongjun Chung <chungd@musc.edu>,
+Maintainer: Zequn Sun <sunze@musc.edu>
+Depends:
+    R (>= 2.14)
+Imports:
+    stats,
+    methods,
+    graphics,
+    glmnet,
+    survival,
+    survcomp,
+    parallel,
+    foreach,
+    pheatmap,
+    mixOmics,
+    plsRcox,
+    rms,
+    Hmisc,
+    ggrepel,
+    ggplot2,
+    gridExtra,
+    survivalROC
+Description: This package provides functions for fitting pathclust, a statistical
+    framework for simultaneous identification of cancer patient subgroups and key
+    molecular features.
+LazyData: true
+License: GPL (>= 2)
+Encoding: UTF-8
+RoxygenNote: 6.0.1

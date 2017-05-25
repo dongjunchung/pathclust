@@ -1,0 +1,21 @@
+load("/Users/dongjunchung/Google 드라이브/USB/research - 20. cancer subtype identification/1. pathway_index/software/PICS/data/TCGA.RData")
+ls()
+TCGA
+ls()
+geneexpr <- TCGA
+rm("TCGA")
+ls()
+TCGA <- list()
+TCGA$d = d
+TCGA$t = t
+TCGA$pathList = path.list
+TCGA$geneexpr = geneexpr
+str(TCGA)
+save( TCGA, file="~/TCGA.RData" )
+load("/Users/dongjunchung/Google 드라이브/USB/research - 20. cancer subtype identification/1. pathway_index/software/PICS/data/TCGA.RData")
+load("/Users/dongjunchung/Google 드라이브/USB/research - 20. cancer subtype identification/1. pathway_index/software/PICS/data/TCGA.RData")
+ls()
+TCGA$t
+TCGA$d
+TCGA$pathList
+names(TCGA$pathList)

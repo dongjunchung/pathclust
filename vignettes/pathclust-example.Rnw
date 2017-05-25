@@ -1,0 +1,224 @@
+% -*- mode: noweb; noweb-default-code-mode: R-mode; -*-
+\documentclass[11pt]{article}
+%% Set my margins
+\setlength{\oddsidemargin}{0.0truein}
+\setlength{\evensidemargin}{0.0truein}
+\setlength{\textwidth}{6.5truein}
+\setlength{\topmargin}{0.0truein}
+\setlength{\textheight}{9.0truein}
+\setlength{\headsep}{0.0truein}
+\setlength{\headheight}{0.0truein}
+\setlength{\topskip}{0pt}
+%% End of margins
+
+%%\pagestyle{myheadings}
+%%\markboth{$Date$\hfil$Revision$}{\thepage}
+
+\usepackage[pdftex,
+bookmarks,
+bookmarksopen,
+pdfauthor={Zequn Sun, Wei Wei and Dongjun Chung},
+pdftitle={PICS Vignette}]
+{hyperref}
+
+% \usepackage{fullpage}
+% \usepackage{pdflscape}
+
+\title{An Introduction to the `\texttt{PICS}' Package, Version 1.0}
+\author{ Zequn Sun,Wei Wei and Dongjun Chung\\
+Department of Public Health Sciences, Medical University of South Carolina (MUSC),\\
+  Charleston, SC, 29425.}
+
+
+\date{\today}
+
+\SweaveOpts{engine=R, echo=TRUE, pdf=TRUE}
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+%\VignetteIndexEntry{PICS}
+%\VignetteKeywords{PICS}
+%\VignettePackage{PICS}
+%\VignetteEncoding{UTF-8}
+\maketitle
+
+\section{Overview}
+
+This vignette provides basic information about the
+\texttt{PICS}`\cite{PICS}' package. PICS stands for ``Pathway-guided Identification of Cancer Subtypes''.
+The \texttt{PICS} methodology for Pathway-Guided Identification of Cancer Subtypes is developed in \texttt{PICS}. The proposed approach improves identification of molecularly-defined subgroups of cancer patients by utilizing information from pathway databases in the following four aspects.
+
+(1) integration of genomic data at the pathway-level improves robustness and stability in identification of cancer subgroups and driver molecular features; and
+
+(2) summarizing multiple genes and genomic platforms at the pathway-level can potentially improve statistical power to identify important driver pathways because moderate signals in multiple genes can be aggregated; and
+
+(3) in \texttt{PICS}, we consider this ``operation'' or ``interaction'' between pathways, instead assuming that each pathway operates independently during the cancer progression, which may be unrealistic; and
+
+(4) \texttt{PICS} allows simultaneous inference in multiple biological layers (pathway clusters, pathways, and genes) within a statistically rigorous and unified framework without any additional laborious downstream analysis.
+
+The package can be loaded with the command:
+
+<<preliminaries,echo=FALSE,results=hide>>=
+options(prompt = "R> ")
+@
+
+<<spls-prelim,results=hide>>=
+library("PICS")
+@
+
+\section{Input Data}
+
+The package requires that the response consist of 4 components:
+(1) z-scores in the form of a either data frame or matrix; and
+(2) time and status variable for Cox model of survival analysis in the form of vectors; and
+(3) pathway information is in the form of a list where gene names are included in pathway lists respectively.
+
+The Cancer Genome Atlas (TCGA) is an example application for the `\texttt{PICS}' package.
+The TCGA data was downloaded from the cBio Portal (http://www.cbioportal.org/) using the R package `\texttt{cgdsr}', and we used z scores for the mRNA expression data.
+
+All the mRNA expression measures were centered and scaled to have unit variance according to standard practice. Only genes annotated in the KEGG database and that appeared in both datasets were considered for analysis. In the current stage, we focused only on gene expression measurements and aim at incorporating other data types into our model in the future.
+
+The `\texttt{TCGA}' is a list object with four elements, including the `\texttt{geneexpr}' data frame of z scores for the mRNA expression, the `\texttt{t}' vector of the survival time, the `\texttt{d}' vector of the survival status indicator, and the `\texttt{pathList}' list of the pathway information. The `\texttt{pathList}' has four elements, each of which contains names of genes belonging to each pathway. Z scores for the mRNA expression data of 389 genes are provided for 50 cancer patients, along with survival times and survival statuses.
+
+This dataset can be loaded as follows:
+
+<<spls-data>>=
+data(TCGA)
+TCGA$geneexpr[1:5,1:5]
+TCGA$t[1:5]
+TCGA$d[1:5]
+TCGA$pathList[1]
+@
+
+\section{Pre-filtering}
+
+To eliminate the most unlikely predictors, we first conduct a supervised pre-filtering by fitting a Cox regression model of each mRNA expression measure on patient survival in the TCGA dataset. Only the gene expressions associated with patient survival at p-values smaller than a pre-specified cut-off are included in the subsequent analysis. By default, p = 0.5 is used as cut-off point.
+
+<<prefilter-fn>>=
+prefilter.results <- prefilter(data=TCGA$geneexpr, time=TCGA$t, status=TCGA$d, plist=TCGA$pathList)
+prefilter.results
+@
+
+\section{Gene Selection}
+This section is about gene-level analysis using a SPLS Cox regression\cite{SPLS}. In order to select key genes associated with patient survivals and effectively summarize them by taking into account correlation among them, we fit a sparse partial least squares (SPLS) Cox regression model of patient survivals on gene expression measurements for each pathway.
+
+There are two main tuning parameters: `\texttt{eta}' represents
+the sparsity tuning parameter and `\texttt{K}'
+is the number of hidden (latent) components. Parameters can be chosen by ($v$-fold)
+cross-validation using the
+function `\texttt{selectGene}'.  The user can search the range for these parameters and
+the cross-validation procedure
+searches within these ranges. `\texttt{eta}' should have a value between 0 and 1. `\texttt{K}'
+is integer valued and can range between
+1 and $ min \left\{ p, (v-1) n / v \right\} $, where $p$ is the number of predictors and $n$ is the sample size. For example, if 10-fold cross-validation is used (default), `\texttt{K}' should be smaller than $ min \left\{ p, 0.9 n \right\} $. For the TCGA data, we set fold as 5, `\texttt{K}' as 5, and search for `\texttt{eta}' between 0.1 and 0.9 with the following command:
+
+
+<<selectGene-fn,results=hide>>=
+gene.results <- selectGene(prefilter.results)
+@
+<<selectGene-fn>>=
+gene.results
+@
+
+
+<<selectGene-fn>>=
+head(coef(gene.results)[[1]])
+@
+
+\section{Pathway Selection}
+
+Next, in order to identify a parsimonious set of pathways associated with patient survivals, we fit a LASSO-penalized Cox regression\cite{LASSO} on latent components derived from all the pathways.
+Specifically, a pathway was selected if at least one of its latent components had non-zero LASSO coefficient estimate.
+
+Hazard ratio plot associated with each latent component in selected pathways can be shown using the function \texttt{plot()} with the argument \texttt{type= "{}HR"{}}.
+
+<<plot1,eval=FALSE>>=
+plot(path.results, type="HR")
+@
+
+Figure 1 shows the hazard ratio (HR) associated with each latent component in selected pathways.
+Based on the TCGA data, pathways with the largest effect on survival ($HR \geq 1.15$) are \texttt{KEGG\_CITRATE\_CYCLE\_TCA\_CYCLE} and \texttt{KEGG\_TGF\_BETA\_SIGNALING\_PATHWAY} pathways.
+
+This approach has the following two strengths:
+First, the latent components generated from the SPLS step preserve pathway structure and also reflect correlation among genes and their association with survival outcomes. Second, this approach can potentially improve the stability of estimation in the subsequent analysis.
+<<selectPath-fn>>=
+path.results <- selectPath(gene.results)
+path.results
+head(coef(path.results))
+@
+
+
+
+
+
+
+
+
+\begin{figure}[tbh]
+\begin{center}
+<<plot1,fig=TRUE,height=6,width=6,echo=FALSE,results=hide>>=
+plot(path.results, type="HR")
+@
+\caption{Hazard ratio (HR) associated with each latent component in selected pathways}
+\end{center}
+\end{figure}
+
+
+
+\section{Risk Group Prediction}
+Risk group predictions can be made using the function \texttt{predict()}
+
+<<prediction-fn>>=
+predicted <- predict(path.results)
+predicted[1:3]
+@
+
+\section{Survival Curve}
+The predictive performance of \texttt{PICS} method can be presented by Kaplan-Meier curves.
+Kaplan-Meier curves of predicted patient subgroups based on the \texttt{PICS} approach can be shown with \texttt{plot()} function with argument \texttt{type= "{}KM"{}}.
+
+<<plot2,eval=FALSE>>=
+plot(path.results,type="KM")
+@
+
+Figure 2 shows the Kaplan-Meier curves of predicted patient subgroups based on the \texttt{PICS} approach. The \texttt{PICS} approach distinguish the high, medium and low risk group from each other.
+
+\begin{figure}[tbh]
+\begin{center}
+<<plot,fig=TRUE,height=6,width=6,echo=FALSE,results=hide>>=
+plot(path.results,type="KM")
+@
+\caption{The observed survival curves for patient subgroups identified by the \texttt{PICS}}
+\end{center}
+\end{figure}
+
+\section{Survival ROC}
+
+The predictive performance of \texttt{PICS} method can be further evaluated based on area under the time dependent receiver operating curve (ROC).
+ROC plot can be shown using \texttt{plot()} function with argument \texttt{type= "{}ROC"{}}.
+<<plot3,eval=FALSE>>=
+plot(path.results,type="ROC")
+@
+
+
+\begin{figure}[tbh]
+\begin{center}
+<<plot3,fig=TRUE,height=6,width=6,echo=FALSE,results=hide>>=
+plot(path.results,type="ROC")
+@
+\caption{Time dependent Receiver Operating Curves}
+\end{center}
+\end{figure}
+
+Figure 3 shows the ROC curves for survival and demonstrates an advantage of the \texttt{PICS} approach. For the TCGA data, the area under curve (AUC) associated with the \texttt{PICS} approach was 0.886.
+
+
+\begin{thebibliography}{99}
+\bibitem{PICS} Wei Wei, Zequn Sun, Willian da Silveira, Zhenning Yu, Andrew Lawson, Gary Hardiman, Linda Kelemen, Dongjun Chung (2017), ``PICS: Pathway-guided identification of cancer subtypes''. (submitted).
+\bibitem{TCGA} Cancer Genome Atlas Research Network (2011), ``Integrated genomic analyses of ovarian carcinoma''. Nature, 474(7353), 609-615.
+\bibitem{SPLS} Bastien, P., Bertrand, F., Meyer, N., Maumy-Bertrand, M. (2014), `` Deviance residuals-based sparse PLS and sparse kernel PLS regression for censored data''. Bioinformatics, 31(3), 397-404.
+\bibitem{LASSO} Tibshirani, R. (1997), ``The Lasso Method For Variable Selection In The Cox Model''. Statistics in Medicine, 16(4), 385-395.
+
+\end{thebibliography}
+
+\end{document}
