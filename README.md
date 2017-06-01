@@ -24,8 +24,3 @@ The R package vignette will provide a good start point for the genetic analysis 
 library(pathclust)
 vignette("pathclust-example")
 ```
-
-References
-==========
-
-Wei W, Sun Z, da Silveira WA, Yu Z, Lawson A, Hardiman G, Kelemen LE, and Chung D (2017), "pathclust: Pathway-guided identification of cancer subgroups."
